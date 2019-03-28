@@ -94,6 +94,10 @@ trait Caching
 
     public function getModelCacheCooldown(Model $instance) : array
     {
+        if (! $instance->cacheCooldownSeconds) {
+            return [null, null, null];
+        }
+
         $cachePrefix = $this->getCachePrefix();
         $modelClassName = get_class($instance);
 

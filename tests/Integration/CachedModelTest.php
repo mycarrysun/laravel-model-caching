@@ -2,18 +2,11 @@
 
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Author;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Book;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Observers\AuthorObserver;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\PrefixedAuthor;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Profile;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Publisher;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\Store;
 use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedAuthor;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedBook;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedProfile;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedPublisher;
-use GeneaLabs\LaravelModelCaching\Tests\Fixtures\UncachedStore;
 use GeneaLabs\LaravelModelCaching\Tests\IntegrationTestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use GeneaLabs\LaravelModelCaching\Tests\Fixtures\AuthorWithCooldown;
+use ReflectionClass;
 
 class CachedModelTest extends IntegrationTestCase
 {
@@ -153,19 +146,46 @@ class CachedModelTest extends IntegrationTestCase
         $this->assertNotEmpty($books1->diffKeys($books2));
     }
 
+    public function testCooldownIsNotQueriedForNormalCachedModels()
+    {
+        $class = new ReflectionClass(Author::class);
+        $method = $class->getMethod('getModelCacheCooldown');
+        $method->setAccessible(true);
+        $author = (new Author)
+            ->first();
+
+        $this->assertEquals([null, null, null], $method->invokeArgs($author, [$author]));
+    }
+
+    public function testCooldownIsQueriedForCooldownModels()
+    {
+        $class = new ReflectionClass(AuthorWithCooldown::class);
+        $method = $class->getMethod('getModelCacheCooldown');
+        $method->setAccessible(true);
+        $author = (new AuthorWithCooldown)
+            ->withCacheCooldownSeconds(1)
+            ->first();
+        
+        [$usesCacheCooldown, $expiresAt, $savedAt] = $method->invokeArgs($author, [$author]);
+
+        $this->assertEquals($usesCacheCooldown, 1);
+        $this->assertEquals("Carbon\Carbon", get_class($expiresAt));
+        $this->assertNull($savedAt);
+    }
+
     public function testModelCacheDoesntInvalidateDuringCooldownPeriod()
     {
-        $authors = (new Author)
+        $authors = (new AuthorWithCooldown)
             ->withCacheCooldownSeconds(1)
             ->get();
 
         factory(Author::class, 1)->create();
-        $authorsDuringCooldown = (new Author)
+        $authorsDuringCooldown = (new AuthorWithCooldown)
             ->get();
         $uncachedAuthors = (new UncachedAuthor)
             ->get();
         sleep(2);
-        $authorsAfterCooldown = (new Author)
+        $authorsAfterCooldown = (new AuthorWithCooldown)
             ->get();
 
         $this->assertCount(10, $authors);
@@ -176,7 +196,7 @@ class CachedModelTest extends IntegrationTestCase
 
     public function testModelCacheDoesInvalidateWhenNoCooldownPeriod()
     {
-        $authors = (new Author)
+        $authors = (new AuthorWithCooldown)
             ->get();
 
         factory(Author::class, 1)->create();

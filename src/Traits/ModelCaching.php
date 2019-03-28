@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 
 trait ModelCaching
 {
+    protected $cacheCooldownSeconds = 0;
+
     public static function all($columns = ['*'])
     {
         if (config('laravel-model-caching.disabled')) {
@@ -86,8 +88,12 @@ trait ModelCaching
 
     public function scopeWithCacheCooldownSeconds(
         EloquentBuilder $query,
-        int $seconds
+        int $seconds = null
     ) : EloquentBuilder {
+        if (! $seconds) {
+            $seconds = $this->cacheCooldownSeconds;
+        }
+
         $cachePrefix = $this->getCachePrefix();
         $modelClassName = get_class($this);
         $cacheKey = "{$cachePrefix}:{$modelClassName}-cooldown:seconds";
@@ -104,5 +110,10 @@ trait ModelCaching
             });
 
         return $query;
+    }
+
+    public function getcacheCooldownSecondsAttribute() : bool
+    {
+        return $this->cacheCooldownSeconds;
     }
 }
