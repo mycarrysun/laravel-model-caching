@@ -215,12 +215,16 @@ class CacheKey
 
         $type = strtolower($where["type"]);
         $subquery = $this->getValuesFromWhere($where);
-        $values = collect($this->query->bindings["where"][$this->currentBinding]);
-        $this->currentBinding++;
-        $subquery = collect(vsprintf(str_replace("?", "%s", $subquery), $values->toArray()));
-        $values = $this->recursiveImplode($subquery->toArray(), "_");
+        if(isset($this->query->bindings["where"][$this->currentBinding])){
+	        $values = collect($this->query->bindings["where"][$this->currentBinding]);
+	        $this->currentBinding++;
+	        $subquery = collect(vsprintf(str_replace("?", "%s", $subquery), $values->toArray()));
+	        $values = $this->recursiveImplode($subquery->toArray(), "_");
 
-        return "-{$where["column"]}_{$type}{$values}";
+	        return "-{$where["column"]}_{$type}{$values}";
+        }
+
+        return "";
     }
 
     protected function recursiveImplode(array $items, string $glue = ",") : string
