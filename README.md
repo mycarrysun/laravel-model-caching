@@ -150,6 +150,35 @@ or:
     ->get();
 ```
 
+#### Disable the cooldown feature
+By default, any cachable model will always check the cache for the cooldown variables. This degrades performance and it is recommended to disable this feature if you are not using it.
+
+You can disable cooldown globally by setting `MODEL_CACHE_COOLDOWN_ENABLE=false` in your `.env` file.
+
+The `DisableCooldown` trait is a convenient way to disable cooldown per model.
+```php
+<?php namespace App;
+
+use GeneaLabs\LaravelModelCaching\Traits\DisableCooldown;
+
+class Author extends BaseModel
+{
+    use DisableCooldown;
+    //
+}
+```
+
+You can alternatively disable per model by setting the `cooldown-disable` key to an array of class names:
+```php
+// config/laravel-model-caching.php
+
+'cooldown-disable' => [
+    'App\Author',
+    'App\Book',
+]
+```
+The above example would disable cache cooldown checking on both `App\Author` and `App\Book` models.
+
 ### Disabling Caching of Queries
 There are two methods by which model-caching can be disabled:
 1. Use `->disableCache()` in a query-by-query instance.
